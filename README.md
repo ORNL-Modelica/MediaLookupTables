@@ -3,3 +3,5 @@
  - `Examples` contains some simp
  
  - `doc` contains various documentation. External Function Interface starts in section 12.9 (pp. 165-176) of the Modelica Specification in the `doc` directory. The specification can also be found at https://www.modelica.org/documents.
+ 
+ - `Sources` is the directory `ExternalMedia/Projects/Sources`. It contains the original .cpp and .h files as reference for what we want
