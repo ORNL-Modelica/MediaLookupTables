@@ -1,0 +1,14 @@
+mediumName
+libraryName
+substanceName
+externalFluidConstants
+inputChoice
+ThermodynamicState
+BaseProperties
+setState_pT
+setState_pTX
+specificEnthalpy_pT
+specificEnthalpy_pT_state
+temperature
+specificEnthalpy
+pressure
