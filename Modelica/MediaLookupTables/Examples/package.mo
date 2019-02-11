@@ -28,7 +28,7 @@ protected
 
   model check_noname_spline2d_eval
 
-    parameter String tables = "<xxx<yyy<zzz<";
+    parameter String tables = Modelica.Utilities.Files.loadResource("modelica://MediaLookupTables/Resources/data/lookupTables/ParaHydrogen/pT/");
     parameter Real x = 1000;
     parameter Real y = 1e5;
 
