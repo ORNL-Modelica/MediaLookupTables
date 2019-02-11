@@ -1,0 +1,17 @@
+diff --git a/interpolation/interp2d.c b/interpolation/interp2d.c
+index 6389ebf0..9ac3b438 100644
+--- a/interpolation/interp2d.c
++++ b/interpolation/interp2d.c
+@@ -140,10 +140,12 @@ interp2d_eval(int (*evaluator)(const void *, const double xa[], const double ya[
+ {
+   if (x < interp->xmin || x > interp->xmax)
+     {
++      return GSL_EDOM;
+       GSL_ERROR ("interpolation x value out of range", GSL_EDOM);
+     }
+   else if (y < interp->ymin || y > interp->ymax)
+     {
++      return GSL_EDOM;
+       GSL_ERROR ("interpolation y value out of range", GSL_EDOM);
+     }
+ 
