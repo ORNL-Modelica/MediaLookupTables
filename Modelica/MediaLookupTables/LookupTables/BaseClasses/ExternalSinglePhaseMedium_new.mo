@@ -20,6 +20,21 @@ package ExternalSinglePhaseMedium_new
       molarMass=getMolarMass());
   constant InputChoice inputChoice=InputChoice.pT
     "Default choice of input variables for property computations";
+
+
+
+  constant String tablePath_T=Modelica.Utilities.Files.loadResource("modelica://MediaLookupTables/Resources/data/lookupTables/ParaHydrogen/pT/T.csv");
+  constant String tablePath_p=Modelica.Utilities.Files.loadResource("modelica://MediaLookupTables/Resources/data/lookupTables/ParaHydrogen/pT/p.csv");
+  constant String tablePath_var=Modelica.Utilities.Files.loadResource("modelica://MediaLookupTables/Resources/data/lookupTables/ParaHydrogen/pT/h.csv");
+
+  constant String interpolationMethod = "bicubic";
+  constant String edgeMethod = "error";
+
+  constant String tables=TRANSFORM.Utilities.Strings.concatenate(
+      {tablePath_T,tablePath_p,tablePath_var,interpolationMethod,edgeMethod},
+      "|",
+      3);
+
   redeclare replaceable record ThermodynamicState
     // Fields in ASCII lexicographical order to work in Dymola
     Temperature T "temperature";
