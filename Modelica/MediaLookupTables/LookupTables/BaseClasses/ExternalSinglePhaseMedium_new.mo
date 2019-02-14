@@ -1,7 +1,7 @@
 within MediaLookupTables.LookupTables.BaseClasses;
-package ExternalSinglePhaseMedium "Generic external single phase medium package"
+package ExternalSinglePhaseMedium_new
+  "Generic external single phase medium package"
   import MediaLookupTables.LookupTables.BaseClasses.Common.InputChoice;
-
   extends MediaLookupTables.Interfaces.Fluids.PartialSinglePhaseMedium(
       singleState=false, fluidConstants={externalFluidConstants});
   // mediumName is declared here instead of in the extends clause
@@ -20,7 +20,6 @@ package ExternalSinglePhaseMedium "Generic external single phase medium package"
       molarMass=getMolarMass());
   constant InputChoice inputChoice=InputChoice.pT
     "Default choice of input variables for property computations";
-
   redeclare replaceable record ThermodynamicState
     // Fields in ASCII lexicographical order to work in Dymola
     Temperature T "temperature";
@@ -285,6 +284,20 @@ package ExternalSinglePhaseMedium "Generic external single phase medium package"
     annotation (Inline=true);
   end density_ph;
 
+  function density_ph_state "returns density for given p and h"
+    extends Modelica.Icons.Function;
+    input AbsolutePressure p "Pressure";
+    input SpecificEnthalpy h "Enthalpy";
+    input ThermodynamicState state;
+    output Density d "density";
+  algorithm
+    d := density(state);
+    annotation (
+      Inline=false,
+      LateInline=true,
+      derivative(noDerivative=state) = density_ph_der);
+  end density_ph_state;
+
   replaceable function density_ph_der
     "Total derivative of density_ph"
     extends Modelica.Icons.Function;
@@ -314,6 +327,24 @@ package ExternalSinglePhaseMedium "Generic external single phase medium package"
     annotation (Inline=true, inverse(h=specificEnthalpy_pT(p=p, T=T)));
   end temperature_ph;
 
+  function temperature_ph_state
+    "returns temperature for given p and h"
+    extends Modelica.Icons.Function;
+    input AbsolutePressure p "Pressure";
+    input SpecificEnthalpy h "Enthalpy";
+    input ThermodynamicState state;
+    output Temperature T "Temperature";
+  algorithm
+    T := temperature(state);
+    annotation (
+      Inline=false,
+      LateInline=true,
+      inverse(h=specificEnthalpy_pT_state(
+              p=p,
+              T=T,
+              state=state)));
+  end temperature_ph_state;
+
   replaceable function specificEntropy_ph
     "Return specific entropy from p and h"
     extends Modelica.Icons.Function;
@@ -328,6 +359,35 @@ package ExternalSinglePhaseMedium "Generic external single phase medium package"
     annotation (Inline=true, inverse(h=specificEnthalpy_ps(p=p, s=s)));
   end specificEntropy_ph;
 
+  function specificEntropy_ph_state
+    "returns specific entropy for a given p and h"
+    extends Modelica.Icons.Function;
+    input AbsolutePressure p "Pressure";
+    input SpecificEnthalpy h "Specific Enthalpy";
+    input ThermodynamicState state;
+    output SpecificEntropy s "Specific Entropy";
+  algorithm
+    s := specificEntropy(state);
+    annotation (
+      Inline=false,
+      LateInline=true,
+      derivative(noDerivative=state) = specificEntropy_ph_der);
+  end specificEntropy_ph_state;
+
+  function specificEntropy_ph_der
+    "time derivative of specificEntropy_ph"
+    extends Modelica.Icons.Function;
+    input AbsolutePressure p;
+    input SpecificEnthalpy h;
+    input ThermodynamicState state;
+    input Real p_der "time derivative of pressure";
+    input Real h_der "time derivative of specific enthalpy";
+    output Real s_der "time derivative of specific entropy";
+  algorithm
+    s_der := p_der*(-1.0/(state.d*state.T)) + h_der*(1.0/state.T);
+    annotation (Inline=true);
+  end specificEntropy_ph_der;
+
   redeclare replaceable function density_pT
     "Return density from p and T"
     extends Modelica.Icons.Function;
@@ -341,6 +401,23 @@ package ExternalSinglePhaseMedium "Generic external single phase medium package"
         state=setState_pT(p=p, T=T));
     annotation (Inline=true, inverse(p=pressure_dT(d=d, T=T)));
   end density_pT;
+
+  function density_pT_state
+    extends Modelica.Icons.Function;
+    input AbsolutePressure p "Pressure";
+    input Temperature T "Temperature";
+    input ThermodynamicState state;
+    output Density d "Density";
+  algorithm
+    d := density(state);
+    annotation (
+      Inline=false,
+      LateInline=true,
+      inverse(p=pressure_dT_state(
+              d=d,
+              T=T,
+              state=state)));
+  end density_pT_state;
 
   replaceable function density_pT_der
     "Total derivative of density_pT"
@@ -374,6 +451,50 @@ package ExternalSinglePhaseMedium "Generic external single phase medium package"
     annotation (Inline=true, inverse(T=temperature_ph(p=p, h=h)));
   end specificEnthalpy_pT;
 
+  function specificEnthalpy_pT_state
+    "returns specific enthalpy for given p and T"
+    extends Modelica.Icons.Function;
+    input AbsolutePressure p "Pressure";
+    input Temperature T "Temperature";
+    input ThermodynamicState state;
+    output SpecificEnthalpy h "specific enthalpy";
+  algorithm
+    h := specificEnthalpy(state);
+    annotation (
+      Inline=false,
+      LateInline=true,
+      inverse(T=temperature_ph_state(
+              p=p,
+              h=h,
+              state=state)));
+  end specificEnthalpy_pT_state;
+
+  function specificEntropy_pT
+    "returns specific entropy for a given p and T"
+    extends Modelica.Icons.Function;
+    input AbsolutePressure p "Pressure";
+    input Temperature T "Temperature";
+    output SpecificEntropy s "Specific Entropy";
+  algorithm
+    s := specificEntropy_pT_state(
+        p=p,
+        T=T,
+        state=setState_pT(p=p, T=T));
+    annotation (Inline=true, inverse(T=temperature_ps(p=p, s=s)));
+  end specificEntropy_pT;
+
+  function specificEntropy_pT_state
+    "returns specific entropy for a given p and T"
+    extends Modelica.Icons.Function;
+    input AbsolutePressure p "Pressure";
+    input Temperature T "Temperature";
+    input ThermodynamicState state;
+    output SpecificEntropy s "Specific Entropy";
+  algorithm
+    s := specificEntropy(state);
+    annotation (Inline=false, LateInline=true);
+  end specificEntropy_pT_state;
+
   redeclare replaceable function pressure_dT
     "Return pressure from d and T"
     extends Modelica.Icons.Function;
@@ -387,6 +508,23 @@ package ExternalSinglePhaseMedium "Generic external single phase medium package"
         state=setState_dT(d=d, T=T));
     annotation (Inline=true, inverse(d=density_pT(p=p, T=T)));
   end pressure_dT;
+
+  function pressure_dT_state
+    extends Modelica.Icons.Function;
+    input Density d "Density";
+    input Temperature T "Temperature";
+    input ThermodynamicState state;
+    output AbsolutePressure p "pressure";
+  algorithm
+    p := pressure(state);
+    annotation (
+      Inline=false,
+      LateInline=true,
+      inverse(d=density_pT_state(
+              p=p,
+              T=T,
+              state=state)));
+  end pressure_dT_state;
 
   redeclare replaceable function specificEnthalpy_dT
     "Return specific enthalpy from d and T"
@@ -402,6 +540,43 @@ package ExternalSinglePhaseMedium "Generic external single phase medium package"
     annotation (Inline=true);
   end specificEnthalpy_dT;
 
+  function specificEnthalpy_dT_state
+    extends Modelica.Icons.Function;
+    input Density d "Density";
+    input Temperature T "Temperature";
+    input ThermodynamicState state;
+    output SpecificEnthalpy h "SpecificEnthalpy";
+  algorithm
+    h := specificEnthalpy(state);
+    annotation (Inline=false, LateInline=true);
+  end specificEnthalpy_dT_state;
+
+  function specificEntropy_dT
+    "returns specific entropy for a given d and T"
+    extends Modelica.Icons.Function;
+    input Density d "Density";
+    input Temperature T "Temperature";
+    output SpecificEntropy s "Specific Entropy";
+  algorithm
+    s := specificEntropy_dT_state(
+        d=d,
+        T=T,
+        state=setState_dT(d=d, T=T));
+    annotation (Inline=true);
+  end specificEntropy_dT;
+
+  function specificEntropy_dT_state
+    "returns specific entropy for a given d and T"
+    extends Modelica.Icons.Function;
+    input Density d "Density";
+    input Temperature T "Temperature";
+    input ThermodynamicState state;
+    output SpecificEntropy s "Specific Entropy";
+  algorithm
+    s := specificEntropy(state);
+    annotation (Inline=false, LateInline=true);
+  end specificEntropy_dT_state;
+
   redeclare replaceable function density_ps
     "Return density from p and s"
     extends Modelica.Icons.Function;
@@ -415,6 +590,20 @@ package ExternalSinglePhaseMedium "Generic external single phase medium package"
         state=setState_ps(p=p, s=s));
     annotation (Inline=true);
   end density_ps;
+
+  function density_ps_state "Return density from p and s"
+    extends Modelica.Icons.Function;
+    input AbsolutePressure p "Pressure";
+    input SpecificEntropy s "Specific entropy";
+    input ThermodynamicState state;
+    output Density d "Density";
+  algorithm
+    d := density(state);
+    annotation (
+      Inline=false,
+      LateInline=true,
+      derivative(noDerivative=state) = density_ps_der);
+  end density_ps_state;
 
   replaceable partial function density_ps_der
     "Total derivative of density_ps"
@@ -443,6 +632,24 @@ package ExternalSinglePhaseMedium "Generic external single phase medium package"
     annotation (Inline=true, inverse(s=specificEntropy_pT(p=p, T=T)));
   end temperature_ps;
 
+  function temperature_ps_state
+    "returns temperature for given p and s"
+    extends Modelica.Icons.Function;
+    input AbsolutePressure p "Pressure";
+    input SpecificEntropy s "Specific entropy";
+    input ThermodynamicState state;
+    output Temperature T "Temperature";
+  algorithm
+    T := temperature(state);
+    annotation (
+      Inline=false,
+      LateInline=true,
+      inverse(s=specificEntropy_pT_state(
+              p=p,
+              T=T,
+              state=state)));
+  end temperature_ps_state;
+
   redeclare replaceable function specificEnthalpy_ps
     "Return specific enthalpy from p and s"
     extends Modelica.Icons.Function;
@@ -456,6 +663,47 @@ package ExternalSinglePhaseMedium "Generic external single phase medium package"
         state=setState_ps(p=p, s=s));
     annotation (Inline=true, inverse(s=specificEntropy_ph(p=p, h=h)));
   end specificEnthalpy_ps;
+
+  function specificEnthalpy_ps_state "Return enthalpy from p and s"
+    extends Modelica.Icons.Function;
+    input AbsolutePressure p "Pressure";
+    input SpecificEntropy s "Specific entropy";
+    input ThermodynamicState state;
+    output SpecificEnthalpy h "Enthalpy";
+  algorithm
+    h := specificEnthalpy(state);
+    annotation (
+      Inline=false,
+      LateInline=true,
+      inverse(s=specificEntropy_ph_state(
+              p=p,
+              h=h,
+              state=state)));
+  end specificEnthalpy_ps_state;
+
+  function density_hs "Return density for given h and s"
+    extends Modelica.Icons.Function;
+    input SpecificEnthalpy h "Enthalpy";
+    input SpecificEntropy s "Specific entropy";
+    output Density d "density";
+  algorithm
+    d := density_hs_state(
+        h=h,
+        s=s,
+        state=setState_hs(h=h, s=s));
+    annotation (Inline=true);
+  end density_hs;
+
+  function density_hs_state "Return density for given h and s"
+    extends Modelica.Icons.Function;
+    input SpecificEnthalpy h "Enthalpy";
+    input SpecificEntropy s "Specific entropy";
+    input ThermodynamicState state;
+    output Density d "density";
+  algorithm
+    d := density(state);
+    annotation (Inline=false, LateInline=true);
+  end density_hs_state;
 
   replaceable function pressure_hs "Return pressure from h and s"
     extends Modelica.Icons.Function;
@@ -471,6 +719,17 @@ package ExternalSinglePhaseMedium "Generic external single phase medium package"
             specificEntropy_ph(p=p, h=h)));
   end pressure_hs;
 
+  function pressure_hs_state "Return pressure for given h and s"
+    extends Modelica.Icons.Function;
+    input SpecificEnthalpy h "Enthalpy";
+    input SpecificEntropy s "Specific entropy";
+    input ThermodynamicState state;
+    output AbsolutePressure p "Pressure";
+  algorithm
+    p := pressure(state);
+    annotation (Inline=false, LateInline=true);
+  end pressure_hs_state;
+
   replaceable function temperature_hs
     "Return temperature from h and s"
     extends Modelica.Icons.Function;
@@ -484,6 +743,18 @@ package ExternalSinglePhaseMedium "Generic external single phase medium package"
         state=setState_hs(h=h, s=s));
     annotation (Inline=true);
   end temperature_hs;
+
+  function temperature_hs_state
+    "Return temperature for given h and s"
+    extends Modelica.Icons.Function;
+    input SpecificEnthalpy h "Enthalpy";
+    input SpecificEntropy s "Specific entropy";
+    input ThermodynamicState state;
+    output Temperature T "Temperature";
+  algorithm
+    T := temperature(state);
+    annotation (Inline=false, LateInline=true);
+  end temperature_hs_state;
 
   redeclare function extends prandtlNumber "Returns Prandtl number"
     /*  // If special definition in "C"
@@ -690,11 +961,11 @@ package ExternalSinglePhaseMedium "Generic external single phase medium package"
   //    mediumName, libraryName, substanceName)
   //     annotation(Include="#include \"medialookuptableslib.h\"", Library="MediaLookupTables", IncludeDirectory="modelica://MediaLookupTables/Resources/Include", LibraryDirectory="modelica://MediaLookupTables/Resources/Library");
   //   end isentropicEnthalpy;
-  // 
+  //
   //   redeclare replaceable function extends surfaceTension
   //     "Returns surface tension sigma in the two phase region"
   //     //Standard definition
-  //   algorithm 
+  //   algorithm
   //     sigma := sat.sigma;
   //     /*  //If special definition in "C"
   //   external "C" sigma=  SinglePhaseMedium_surfaceTension_C_impl(sat, mediumName, libraryName, substanceName)
@@ -702,4 +973,4 @@ package ExternalSinglePhaseMedium "Generic external single phase medium package"
   // */
   //     annotation(Inline = true);
   //   end surfaceTension;
-end ExternalSinglePhaseMedium;
+end ExternalSinglePhaseMedium_new;

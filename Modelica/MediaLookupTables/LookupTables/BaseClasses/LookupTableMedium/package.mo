@@ -1,6 +1,5 @@
 within MediaLookupTables.LookupTables.BaseClasses;
 package LookupTableMedium "Medium package accessing the lookup table solver"
-
   extends
     MediaLookupTables.LookupTables.BaseClasses.ExternalSinglePhaseMedium(
       final libraryName="LookupTables", final substanceName=

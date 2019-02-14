@@ -5,7 +5,6 @@ function CheckLookupTableOptions
   input String substance = "";
   input Boolean debug = false;
   output String result;
-
 protected
   Integer nextIndex;
   Integer intVal;
@@ -35,21 +34,17 @@ protected
   // predefined delimiters
   String delimiter1 = "|";
   String delimiter2 = "=";
-
 algorithm
   if noEvent(debug) then
     Modelica.Utilities.Streams.print("input  = " + substance);
   end if;
-
   name := substance;
-
   for i in 1:size(allowedOptions,1) loop
     nextIndex := Modelica.Utilities.Strings.find(name, allowedOptions[i]);     // 0 if not found
     if nextIndex==0 then // not found
       name := name+delimiter1+allowedOptions[i]+delimiter2+defaultOptions[i];
     end if;
   end for;
-
   nextIndex := Modelica.Utilities.Strings.find(name, delimiter1);     // 0 if not found
   if nextIndex > 0 then
     // separate fluid name and options
@@ -57,7 +52,6 @@ algorithm
     rest    := Modelica.Utilities.Strings.substring(name, nextIndex+1, length);
     name    := Modelica.Utilities.Strings.substring(name, 1, nextIndex-1);
     options := "";
-
     while (nextIndex > 0) loop
       nextIndex := Modelica.Utilities.Strings.find(rest, delimiter1);     // 0 if not found
       if nextIndex > 0 then
@@ -94,7 +88,6 @@ algorithm
     name   := substance;
     options:= "";
   end if;
-
   result := name+options;
   if noEvent(debug) then
     Modelica.Utilities.Streams.print("output = " + result);
