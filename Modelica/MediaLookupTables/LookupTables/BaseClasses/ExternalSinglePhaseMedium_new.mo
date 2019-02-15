@@ -7,11 +7,8 @@ package ExternalSinglePhaseMedium_new
   // mediumName is declared here instead of in the extends clause
   // to break a circular dependency in redeclaration that OpenModelica
   // cannot yet handle
-  constant String mediumName="unusablePartialMedium" "Name of the medium";
-  constant String libraryName="UnusableExternalMedium"
-    "Name of the external fluid property computation library";
-  constant String substanceName=substanceNames[1]
-    "Only one substance can be specified";
+//   constant String mediumName="unusablePartialMedium" "Name of the medium";
+
   constant FluidConstants externalFluidConstants=FluidConstants(
       iupacName="unknown",
       casRegistryNumber="unknown",
@@ -21,39 +18,66 @@ package ExternalSinglePhaseMedium_new
   constant InputChoice inputChoice=InputChoice.pT
     "Default choice of input variables for property computations";
 
+  replaceable function Method =
+      MediaLookupTables.Examples.interpolation.bicubic_eval                           constrainedby
+    MediaLookupTables.Examples.interpolation.PartialInterpolation "Interpolation method selection";
+  replaceable function Method_dx =
+      MediaLookupTables.Examples.interpolation.bicubic_eval_deriv_x                              constrainedby
+    MediaLookupTables.Examples.interpolation.PartialInterpolation "Interpolation method selection for derivative wrt x";
+  replaceable function Method_dy =
+      MediaLookupTables.Examples.interpolation.bicubic_eval_deriv_y                              constrainedby
+    MediaLookupTables.Examples.interpolation.PartialInterpolation "Interpolation method selection for derivative wrt y";
+  constant String tablePath="modelica://MediaLookupTables/Resources/data/lookupTables/"
+       + mediumName + (if inputChoice == InputChoice.pT then "/pT/" else "/error/");
+  constant String tablePath_p=Modelica.Utilities.Files.loadResource(tablePath + "p.csv") "Pressure";
+  constant String tablePath_T=Modelica.Utilities.Files.loadResource(tablePath + "T.csv") "Temperature";
+  constant String tablePath_h=Modelica.Utilities.Files.loadResource(tablePath + "h.csv") "Specific enthalpy";
+  constant String tablePath_a=Modelica.Utilities.Files.loadResource(tablePath + "a.csv") "Speed of sound";
+  constant String tablePath_cp=Modelica.Utilities.Files.loadResource(tablePath + "cp.csv") "Isobaric specific heat capacity";
+  constant String tablePath_cv=Modelica.Utilities.Files.loadResource(tablePath + "cv.csv") "Isochoric specific heat capacity";
+  constant String tablePath_d=Modelica.Utilities.Files.loadResource(tablePath + "d.csv") "Density";
+  constant String tablePath_lambda=Modelica.Utilities.Files.loadResource(tablePath + "k.csv") "Thermal conductivity";
+  constant String tablePath_mu=Modelica.Utilities.Files.loadResource(tablePath + "mu.csv") "Dynamic viscosity";
+  constant String tablePath_s=Modelica.Utilities.Files.loadResource(tablePath + "s.csv") "Specific entropy";
 
-
-  constant String tablePath_T=Modelica.Utilities.Files.loadResource("modelica://MediaLookupTables/Resources/data/lookupTables/ParaHydrogen/pT/T.csv");
-  constant String tablePath_p=Modelica.Utilities.Files.loadResource("modelica://MediaLookupTables/Resources/data/lookupTables/ParaHydrogen/pT/p.csv");
-  constant String tablePath_var=Modelica.Utilities.Files.loadResource("modelica://MediaLookupTables/Resources/data/lookupTables/ParaHydrogen/pT/h.csv");
-
-  constant String interpolationMethod = "bicubic";
-  constant String edgeMethod = "error";
-
-  constant String tables=TRANSFORM.Utilities.Strings.concatenate(
-      {tablePath_T,tablePath_p,tablePath_var,interpolationMethod,edgeMethod},
+  constant String tablesPath_pT_h=TRANSFORM.Utilities.Strings.concatenate(
+      {tablePath_p,tablePath_T,tablePath_h},
+      "|",
+      3);
+  constant String tablesPath_pT_a=TRANSFORM.Utilities.Strings.concatenate(
+      {tablePath_p,tablePath_T,tablePath_a},
+      "|",
+      3);
+  constant String tablesPath_pT_cp=TRANSFORM.Utilities.Strings.concatenate(
+      {tablePath_p,tablePath_T,tablePath_cp},
+      "|",
+      3);
+  constant String tablesPath_pT_cv=TRANSFORM.Utilities.Strings.concatenate(
+      {tablePath_p,tablePath_T,tablePath_cv},
+      "|",
+      3);
+   constant String tablesPath_pT_d=TRANSFORM.Utilities.Strings.concatenate(
+      {tablePath_p,tablePath_T,tablePath_d},
+      "|",
+      3);
+  constant String tablesPath_pT_lambda=TRANSFORM.Utilities.Strings.concatenate(
+      {tablePath_p,tablePath_T,tablePath_lambda},
+      "|",
+      3);
+  constant String tablesPath_pT_mu=TRANSFORM.Utilities.Strings.concatenate(
+      {tablePath_p,tablePath_T,tablePath_mu},
+      "|",
+      3);
+  constant String tablesPath_pT_s=TRANSFORM.Utilities.Strings.concatenate(
+      {tablePath_p,tablePath_T,tablePath_s},
       "|",
       3);
 
-  redeclare replaceable record ThermodynamicState
-    // Fields in ASCII lexicographical order to work in Dymola
+  redeclare record extends ThermodynamicState
     Temperature T "temperature";
-    VelocityOfSound a "velocity of sound";
-    Modelica.SIunits.CubicExpansionCoefficient beta
-      "isobaric expansion coefficient";
-    SpecificHeatCapacity cp "specific heat capacity cp";
-    SpecificHeatCapacity cv "specific heat capacity cv";
-    Density d "density";
-    DerDensityByEnthalpy ddhp
-      "derivative of density wrt enthalpy at constant pressure";
-    DerDensityByPressure ddph
-      "derivative of density wrt pressure at constant enthalpy";
-    DynamicViscosity eta "dynamic viscosity";
     SpecificEnthalpy h "specific enthalpy";
-    Modelica.SIunits.Compressibility kappa "compressibility";
-    ThermalConductivity lambda "thermal conductivity";
     AbsolutePressure p "pressure";
-    SpecificEntropy s "specific entropy";
+    //     Density d "Density";
   end ThermodynamicState;
 
   redeclare replaceable model extends BaseProperties(
@@ -124,14 +148,9 @@ package ExternalSinglePhaseMedium_new
 
   replaceable function getMolarMass
     output MolarMass MM "molar mass";
-  external"C" MM = SinglePhaseMedium_getMolarMass_C_impl(
-        mediumName,
-        libraryName,
-        substanceName) annotation (
-      Include="#include \"medialookuptableslib.h\"",
-      Library="MediaLookupTables",
-      IncludeDirectory="modelica://MediaLookupTables/Resources/Include",
-      LibraryDirectory="modelica://MediaLookupTables/Resources/Library");
+
+  algorithm
+    MM :=0.01;
   end getMolarMass;
 
   redeclare replaceable function setState_ph
@@ -140,17 +159,8 @@ package ExternalSinglePhaseMedium_new
     input AbsolutePressure p "pressure";
     input SpecificEnthalpy h "specific enthalpy";
     output ThermodynamicState state;
-  external"C" SinglePhaseMedium_setState_ph_C_impl(
-        p,
-        h,
-        state,
-        mediumName,
-        libraryName,
-        substanceName) annotation (
-      Include="#include \"medialookuptableslib.h\"",
-      Library="MediaLookupTables",
-      IncludeDirectory="modelica://MediaLookupTables/Resources/Include",
-      LibraryDirectory="modelica://MediaLookupTables/Resources/Library");
+  algorithm
+    assert(false,"This function is not yet supported");
   end setState_ph;
 
   redeclare replaceable function setState_pT
@@ -159,17 +169,14 @@ package ExternalSinglePhaseMedium_new
     input AbsolutePressure p "pressure";
     input Temperature T "temperature";
     output ThermodynamicState state;
-  external"C" SinglePhaseMedium_setState_pT_C_impl(
+  algorithm
+    state := ThermodynamicState(
+      p=p,
+      T=T,
+      h=Method(
+        tablesPath_pT_h,
         p,
-        T,
-        state,
-        mediumName,
-        libraryName,
-        substanceName) annotation (
-      Include="#include \"medialookuptableslib.h\"",
-      Library="MediaLookupTables",
-      IncludeDirectory="modelica://MediaLookupTables/Resources/Include",
-      LibraryDirectory="modelica://MediaLookupTables/Resources/Library");
+        T));
   end setState_pT;
 
   redeclare replaceable function setState_dT
@@ -178,17 +185,8 @@ package ExternalSinglePhaseMedium_new
     input Density d "density";
     input Temperature T "temperature";
     output ThermodynamicState state;
-  external"C" SinglePhaseMedium_setState_dT_C_impl(
-        d,
-        T,
-        state,
-        mediumName,
-        libraryName,
-        substanceName) annotation (
-      Include="#include \"medialookuptableslib.h\"",
-      Library="MediaLookupTables",
-      IncludeDirectory="modelica://MediaLookupTables/Resources/Include",
-      LibraryDirectory="modelica://MediaLookupTables/Resources/Library");
+  algorithm
+    assert(false,"This function is not yet supported");
   end setState_dT;
 
   redeclare replaceable function setState_ps
@@ -197,17 +195,8 @@ package ExternalSinglePhaseMedium_new
     input AbsolutePressure p "pressure";
     input SpecificEntropy s "specific entropy";
     output ThermodynamicState state;
-  external"C" SinglePhaseMedium_setState_ps_C_impl(
-        p,
-        s,
-        state,
-        mediumName,
-        libraryName,
-        substanceName) annotation (
-      Include="#include \"medialookuptableslib.h\"",
-      Library="MediaLookupTables",
-      IncludeDirectory="modelica://MediaLookupTables/Resources/Include",
-      LibraryDirectory="modelica://MediaLookupTables/Resources/Library");
+  algorithm
+    assert(false,"This function is not yet supported");
   end setState_ps;
 
   replaceable function setState_hs
@@ -216,40 +205,9 @@ package ExternalSinglePhaseMedium_new
     input SpecificEnthalpy h "specific enthalpy";
     input SpecificEntropy s "specific entropy";
     output ThermodynamicState state;
-  external"C" SinglePhaseMedium_setState_hs_C_impl(
-        h,
-        s,
-        state,
-        mediumName,
-        libraryName,
-        substanceName) annotation (
-      Include="#include \"medialookuptableslib.h\"",
-      Library="MediaLookupTables",
-      IncludeDirectory="modelica://MediaLookupTables/Resources/Include",
-      LibraryDirectory="modelica://MediaLookupTables/Resources/Library");
+  algorithm
+    assert(false,"This function is not yet supported");
   end setState_hs;
-
-  replaceable function partialDeriv_state
-    "Return partial derivative from a thermodynamic state record"
-    extends Modelica.Icons.Function;
-    input String of "The property to differentiate";
-    input String wrt "Differentiate with respect to this";
-    input String cst "Keep this constant";
-    input ThermodynamicState state;
-    output Real partialDerivative;
-  external"C" partialDerivative = SinglePhaseMedium_partialDeriv_state_C_impl(
-        of,
-        wrt,
-        cst,
-        state,
-        mediumName,
-        libraryName,
-        substanceName) annotation (
-      Include="#include \"medialookuptableslib.h\"",
-      Library="MediaLookupTables",
-      IncludeDirectory="modelica://MediaLookupTables/Resources/Include",
-      LibraryDirectory="modelica://MediaLookupTables/Resources/Library");
-  end partialDeriv_state;
 
   redeclare function extends setState_phX
   algorithm
@@ -281,7 +239,6 @@ package ExternalSinglePhaseMedium_new
     input SpecificEntropy s "specific entropy";
     output ThermodynamicState state;
   algorithm
-    // The composition is an empty vector
     state := setState_hs(h, s);
   end setState_hsX;
 
@@ -292,26 +249,9 @@ package ExternalSinglePhaseMedium_new
     input SpecificEnthalpy h "Specific enthalpy";
     output Density d "Density";
   algorithm
-    d := density_ph_state(
-        p=p,
-        h=h,
-        state=setState_ph(p=p, h=h));
+    assert(false,"This function is not yet supported");
     annotation (Inline=true);
   end density_ph;
-
-  function density_ph_state "returns density for given p and h"
-    extends Modelica.Icons.Function;
-    input AbsolutePressure p "Pressure";
-    input SpecificEnthalpy h "Enthalpy";
-    input ThermodynamicState state;
-    output Density d "density";
-  algorithm
-    d := density(state);
-    annotation (
-      Inline=false,
-      LateInline=true,
-      derivative(noDerivative=state) = density_ph_der);
-  end density_ph_state;
 
   replaceable function density_ph_der
     "Total derivative of density_ph"
@@ -335,30 +275,9 @@ package ExternalSinglePhaseMedium_new
     input SpecificEnthalpy h "Specific enthalpy";
     output Temperature T "Temperature";
   algorithm
-    T := temperature_ph_state(
-        p=p,
-        h=h,
-        state=setState_ph(p=p, h=h));
+    assert(false,"This function is not yet supported");
     annotation (Inline=true, inverse(h=specificEnthalpy_pT(p=p, T=T)));
   end temperature_ph;
-
-  function temperature_ph_state
-    "returns temperature for given p and h"
-    extends Modelica.Icons.Function;
-    input AbsolutePressure p "Pressure";
-    input SpecificEnthalpy h "Enthalpy";
-    input ThermodynamicState state;
-    output Temperature T "Temperature";
-  algorithm
-    T := temperature(state);
-    annotation (
-      Inline=false,
-      LateInline=true,
-      inverse(h=specificEnthalpy_pT_state(
-              p=p,
-              T=T,
-              state=state)));
-  end temperature_ph_state;
 
   replaceable function specificEntropy_ph
     "Return specific entropy from p and h"
@@ -367,29 +286,11 @@ package ExternalSinglePhaseMedium_new
     input SpecificEnthalpy h "Specific enthalpy";
     output SpecificEntropy s "specific entropy";
   algorithm
-    s := specificEntropy_ph_state(
-        p=p,
-        h=h,
-        state=setState_ph(p=p, h=h));
+    assert(false,"This function is not yet supported");
     annotation (Inline=true, inverse(h=specificEnthalpy_ps(p=p, s=s)));
   end specificEntropy_ph;
 
-  function specificEntropy_ph_state
-    "returns specific entropy for a given p and h"
-    extends Modelica.Icons.Function;
-    input AbsolutePressure p "Pressure";
-    input SpecificEnthalpy h "Specific Enthalpy";
-    input ThermodynamicState state;
-    output SpecificEntropy s "Specific Entropy";
-  algorithm
-    s := specificEntropy(state);
-    annotation (
-      Inline=false,
-      LateInline=true,
-      derivative(noDerivative=state) = specificEntropy_ph_der);
-  end specificEntropy_ph_state;
-
-  function specificEntropy_ph_der
+  replaceable function specificEntropy_ph_der
     "time derivative of specificEntropy_ph"
     extends Modelica.Icons.Function;
     input AbsolutePressure p;
@@ -399,7 +300,7 @@ package ExternalSinglePhaseMedium_new
     input Real h_der "time derivative of specific enthalpy";
     output Real s_der "time derivative of specific entropy";
   algorithm
-    s_der := p_der*(-1.0/(state.d*state.T)) + h_der*(1.0/state.T);
+    s_der := p_der*(-1.0/(density(setState_ph(p=p,h=h))*state.T)) + h_der*(1.0/state.T);
     annotation (Inline=true);
   end specificEntropy_ph_der;
 
@@ -410,29 +311,12 @@ package ExternalSinglePhaseMedium_new
     input Temperature T "Temperature";
     output Density d "Density";
   algorithm
-    d := density_pT_state(
-        p=p,
-        T=T,
-        state=setState_pT(p=p, T=T));
+    d := Method(
+        tablesPath_pT_d,
+        p,
+        T);
     annotation (Inline=true, inverse(p=pressure_dT(d=d, T=T)));
   end density_pT;
-
-  function density_pT_state
-    extends Modelica.Icons.Function;
-    input AbsolutePressure p "Pressure";
-    input Temperature T "Temperature";
-    input ThermodynamicState state;
-    output Density d "Density";
-  algorithm
-    d := density(state);
-    annotation (
-      Inline=false,
-      LateInline=true,
-      inverse(p=pressure_dT_state(
-              d=d,
-              T=T,
-              state=state)));
-  end density_pT_state;
 
   replaceable function density_pT_der
     "Total derivative of density_pT"
@@ -445,10 +329,6 @@ package ExternalSinglePhaseMedium_new
   algorithm
     d_der := density_derp_T(setState_pT(p, T))*p_der + density_derT_p(
       setState_pT(p, T))*T_der;
-    /*  // If special definition in "C"
-    external "C" d_der=  SinglePhaseMedium_density_pT_der_C_impl(state, mediumName, libraryName, substanceName)
-    annotation(Include="#include \"medialookuptableslib.h\"", Library="MediaLookupTables", IncludeDirectory="modelica://MediaLookupTables/Resources/Include", LibraryDirectory="modelica://MediaLookupTables/Resources/Library");
-    */
     annotation (Inline=true);
   end density_pT_der;
 
@@ -459,56 +339,26 @@ package ExternalSinglePhaseMedium_new
     input Temperature T "Temperature";
     output SpecificEnthalpy h "specific enthalpy";
   algorithm
-    h := specificEnthalpy_pT_state(
-        p=p,
-        T=T,
-        state=setState_pT(p=p, T=T));
+    h := Method(
+        tablesPath_pT_h,
+        p,
+        T);
     annotation (Inline=true, inverse(T=temperature_ph(p=p, h=h)));
   end specificEnthalpy_pT;
 
-  function specificEnthalpy_pT_state
-    "returns specific enthalpy for given p and T"
-    extends Modelica.Icons.Function;
-    input AbsolutePressure p "Pressure";
-    input Temperature T "Temperature";
-    input ThermodynamicState state;
-    output SpecificEnthalpy h "specific enthalpy";
-  algorithm
-    h := specificEnthalpy(state);
-    annotation (
-      Inline=false,
-      LateInline=true,
-      inverse(T=temperature_ph_state(
-              p=p,
-              h=h,
-              state=state)));
-  end specificEnthalpy_pT_state;
-
-  function specificEntropy_pT
+  replaceable function specificEntropy_pT
     "returns specific entropy for a given p and T"
     extends Modelica.Icons.Function;
     input AbsolutePressure p "Pressure";
     input Temperature T "Temperature";
     output SpecificEntropy s "Specific Entropy";
   algorithm
-    s := specificEntropy_pT_state(
-        p=p,
-        T=T,
-        state=setState_pT(p=p, T=T));
+    s := Method(
+        tablesPath_pT_s,
+        p,
+        T);
     annotation (Inline=true, inverse(T=temperature_ps(p=p, s=s)));
   end specificEntropy_pT;
-
-  function specificEntropy_pT_state
-    "returns specific entropy for a given p and T"
-    extends Modelica.Icons.Function;
-    input AbsolutePressure p "Pressure";
-    input Temperature T "Temperature";
-    input ThermodynamicState state;
-    output SpecificEntropy s "Specific Entropy";
-  algorithm
-    s := specificEntropy(state);
-    annotation (Inline=false, LateInline=true);
-  end specificEntropy_pT_state;
 
   redeclare replaceable function pressure_dT
     "Return pressure from d and T"
@@ -517,29 +367,9 @@ package ExternalSinglePhaseMedium_new
     input Temperature T "Temperature";
     output AbsolutePressure p "Pressure";
   algorithm
-    p := pressure_dT_state(
-        d=d,
-        T=T,
-        state=setState_dT(d=d, T=T));
+    assert(false,"This function is not yet supported");
     annotation (Inline=true, inverse(d=density_pT(p=p, T=T)));
   end pressure_dT;
-
-  function pressure_dT_state
-    extends Modelica.Icons.Function;
-    input Density d "Density";
-    input Temperature T "Temperature";
-    input ThermodynamicState state;
-    output AbsolutePressure p "pressure";
-  algorithm
-    p := pressure(state);
-    annotation (
-      Inline=false,
-      LateInline=true,
-      inverse(d=density_pT_state(
-              p=p,
-              T=T,
-              state=state)));
-  end pressure_dT_state;
 
   redeclare replaceable function specificEnthalpy_dT
     "Return specific enthalpy from d and T"
@@ -548,49 +378,20 @@ package ExternalSinglePhaseMedium_new
     input Temperature T "Temperature";
     output SpecificEnthalpy h "specific enthalpy";
   algorithm
-    h := specificEnthalpy_dT_state(
-        d=d,
-        T=T,
-        state=setState_dT(d=d, T=T));
+    assert(false,"This function is not yet supported");
     annotation (Inline=true);
   end specificEnthalpy_dT;
 
-  function specificEnthalpy_dT_state
-    extends Modelica.Icons.Function;
-    input Density d "Density";
-    input Temperature T "Temperature";
-    input ThermodynamicState state;
-    output SpecificEnthalpy h "SpecificEnthalpy";
-  algorithm
-    h := specificEnthalpy(state);
-    annotation (Inline=false, LateInline=true);
-  end specificEnthalpy_dT_state;
-
-  function specificEntropy_dT
+  replaceable function specificEntropy_dT
     "returns specific entropy for a given d and T"
     extends Modelica.Icons.Function;
     input Density d "Density";
     input Temperature T "Temperature";
     output SpecificEntropy s "Specific Entropy";
   algorithm
-    s := specificEntropy_dT_state(
-        d=d,
-        T=T,
-        state=setState_dT(d=d, T=T));
+    assert(false,"This function is not yet supported");
     annotation (Inline=true);
   end specificEntropy_dT;
-
-  function specificEntropy_dT_state
-    "returns specific entropy for a given d and T"
-    extends Modelica.Icons.Function;
-    input Density d "Density";
-    input Temperature T "Temperature";
-    input ThermodynamicState state;
-    output SpecificEntropy s "Specific Entropy";
-  algorithm
-    s := specificEntropy(state);
-    annotation (Inline=false, LateInline=true);
-  end specificEntropy_dT_state;
 
   redeclare replaceable function density_ps
     "Return density from p and s"
@@ -599,26 +400,9 @@ package ExternalSinglePhaseMedium_new
     input SpecificEntropy s "Specific entropy";
     output Density d "Density";
   algorithm
-    d := density_ps_state(
-        p=p,
-        s=s,
-        state=setState_ps(p=p, s=s));
+    assert(false,"This function is not yet supported");
     annotation (Inline=true);
   end density_ps;
-
-  function density_ps_state "Return density from p and s"
-    extends Modelica.Icons.Function;
-    input AbsolutePressure p "Pressure";
-    input SpecificEntropy s "Specific entropy";
-    input ThermodynamicState state;
-    output Density d "Density";
-  algorithm
-    d := density(state);
-    annotation (
-      Inline=false,
-      LateInline=true,
-      derivative(noDerivative=state) = density_ps_der);
-  end density_ps_state;
 
   replaceable partial function density_ps_der
     "Total derivative of density_ps"
@@ -629,6 +413,8 @@ package ExternalSinglePhaseMedium_new
     input Real p_der;
     input Real h_der;
     output Real d_der;
+  algorithm
+    assert(false,"This function is not yet supported");
     // To be implemented
     annotation (Inline=true);
   end density_ps_der;
@@ -640,30 +426,9 @@ package ExternalSinglePhaseMedium_new
     input SpecificEntropy s "Specific entropy";
     output Temperature T "Temperature";
   algorithm
-    T := temperature_ps_state(
-        p=p,
-        s=s,
-        state=setState_ps(p=p, s=s));
+    assert(false,"This function is not yet supported");
     annotation (Inline=true, inverse(s=specificEntropy_pT(p=p, T=T)));
   end temperature_ps;
-
-  function temperature_ps_state
-    "returns temperature for given p and s"
-    extends Modelica.Icons.Function;
-    input AbsolutePressure p "Pressure";
-    input SpecificEntropy s "Specific entropy";
-    input ThermodynamicState state;
-    output Temperature T "Temperature";
-  algorithm
-    T := temperature(state);
-    annotation (
-      Inline=false,
-      LateInline=true,
-      inverse(s=specificEntropy_pT_state(
-              p=p,
-              T=T,
-              state=state)));
-  end temperature_ps_state;
 
   redeclare replaceable function specificEnthalpy_ps
     "Return specific enthalpy from p and s"
@@ -672,53 +437,19 @@ package ExternalSinglePhaseMedium_new
     input SpecificEntropy s "Specific entropy";
     output SpecificEnthalpy h "specific enthalpy";
   algorithm
-    h := specificEnthalpy_ps_state(
-        p=p,
-        s=s,
-        state=setState_ps(p=p, s=s));
+    assert(false,"This function is not yet supported");
     annotation (Inline=true, inverse(s=specificEntropy_ph(p=p, h=h)));
   end specificEnthalpy_ps;
 
-  function specificEnthalpy_ps_state "Return enthalpy from p and s"
-    extends Modelica.Icons.Function;
-    input AbsolutePressure p "Pressure";
-    input SpecificEntropy s "Specific entropy";
-    input ThermodynamicState state;
-    output SpecificEnthalpy h "Enthalpy";
-  algorithm
-    h := specificEnthalpy(state);
-    annotation (
-      Inline=false,
-      LateInline=true,
-      inverse(s=specificEntropy_ph_state(
-              p=p,
-              h=h,
-              state=state)));
-  end specificEnthalpy_ps_state;
-
-  function density_hs "Return density for given h and s"
+  replaceable function density_hs "Return density for given h and s"
     extends Modelica.Icons.Function;
     input SpecificEnthalpy h "Enthalpy";
     input SpecificEntropy s "Specific entropy";
     output Density d "density";
   algorithm
-    d := density_hs_state(
-        h=h,
-        s=s,
-        state=setState_hs(h=h, s=s));
+    assert(false,"This function is not yet supported");
     annotation (Inline=true);
   end density_hs;
-
-  function density_hs_state "Return density for given h and s"
-    extends Modelica.Icons.Function;
-    input SpecificEnthalpy h "Enthalpy";
-    input SpecificEntropy s "Specific entropy";
-    input ThermodynamicState state;
-    output Density d "density";
-  algorithm
-    d := density(state);
-    annotation (Inline=false, LateInline=true);
-  end density_hs_state;
 
   replaceable function pressure_hs "Return pressure from h and s"
     extends Modelica.Icons.Function;
@@ -726,24 +457,10 @@ package ExternalSinglePhaseMedium_new
     input SpecificEntropy s "Specific entropy";
     output AbsolutePressure p "Pressure";
   algorithm
-    p := pressure_hs_state(
-        h=h,
-        s=s,
-        state=setState_hs(h=h, s=s));
+    assert(false,"This function is not yet supported");
     annotation (Inline=true, inverse(h=specificEnthalpy_ps(p=p, s=s), s=
             specificEntropy_ph(p=p, h=h)));
   end pressure_hs;
-
-  function pressure_hs_state "Return pressure for given h and s"
-    extends Modelica.Icons.Function;
-    input SpecificEnthalpy h "Enthalpy";
-    input SpecificEntropy s "Specific entropy";
-    input ThermodynamicState state;
-    output AbsolutePressure p "Pressure";
-  algorithm
-    p := pressure(state);
-    annotation (Inline=false, LateInline=true);
-  end pressure_hs_state;
 
   replaceable function temperature_hs
     "Return temperature from h and s"
@@ -752,66 +469,35 @@ package ExternalSinglePhaseMedium_new
     input SpecificEntropy s "Specific entropy";
     output Temperature T "Temperature";
   algorithm
-    T := temperature_hs_state(
-        h=h,
-        s=s,
-        state=setState_hs(h=h, s=s));
+    assert(false,"This function is not yet supported");
     annotation (Inline=true);
   end temperature_hs;
 
-  function temperature_hs_state
-    "Return temperature for given h and s"
-    extends Modelica.Icons.Function;
-    input SpecificEnthalpy h "Enthalpy";
-    input SpecificEntropy s "Specific entropy";
-    input ThermodynamicState state;
-    output Temperature T "Temperature";
-  algorithm
-    T := temperature(state);
-    annotation (Inline=false, LateInline=true);
-  end temperature_hs_state;
-
   redeclare function extends prandtlNumber "Returns Prandtl number"
-    /*  // If special definition in "C"
-  external "C" T=  SinglePhaseMedium_prandtlNumber_C_impl(state, mediumName, libraryName, substanceName)
-    annotation(Include="#include \"medialookuptableslib.h\"", Library="MediaLookupTables", IncludeDirectory="modelica://MediaLookupTables/Resources/Include", LibraryDirectory="modelica://MediaLookupTables/Resources/Library");
-*/
     annotation (Inline=true);
   end prandtlNumber;
 
   redeclare replaceable function extends temperature
     "Return temperature from state"
-    // Standard definition
   algorithm
     T := state.T;
-    /*  // If special definition in "C"
-  external "C" T=  SinglePhaseMedium_temperature_C_impl(state, mediumName, libraryName, substanceName)
-    annotation(Include="#include \"medialookuptableslib.h\"", Library="MediaLookupTables", IncludeDirectory="modelica://MediaLookupTables/Resources/Include", LibraryDirectory="modelica://MediaLookupTables/Resources/Library");
-*/
     annotation (Inline=true);
   end temperature;
 
   redeclare replaceable function extends velocityOfSound
     "Return velocity of sound from state"
-    // Standard definition
   algorithm
-    a := state.a;
-    /*  // If special definition in "C"
-  external "C" a=  SinglePhaseMedium_velocityOfSound_C_impl(state, mediumName, libraryName, substanceName)
-    annotation(Include="#include \"medialookuptableslib.h\"", Library="MediaLookupTables", IncludeDirectory="modelica://MediaLookupTables/Resources/Include", LibraryDirectory="modelica://MediaLookupTables/Resources/Library");
-*/
+    a := Method(
+        tablesPath_pT_a,
+        state.p,
+        state.T);
     annotation (Inline=true);
   end velocityOfSound;
 
   redeclare replaceable function extends isobaricExpansionCoefficient
     "Return isobaric expansion coefficient from state"
-    // Standard definition
   algorithm
-    beta := state.beta;
-    /*  // If special definition in "C"
-  external "C" beta=  SinglePhaseMedium_isobaricExpansionCoefficient_C_impl(state, mediumName, libraryName, substanceName)
-    annotation(Include="#include \"medialookuptableslib.h\"", Library="MediaLookupTables", IncludeDirectory="modelica://MediaLookupTables/Resources/Include", LibraryDirectory="modelica://MediaLookupTables/Resources/Library");
-*/
+    assert(false,"This function is not yet supported");
     annotation (Inline=true);
   end isobaricExpansionCoefficient;
 
@@ -825,95 +511,82 @@ package ExternalSinglePhaseMedium_new
 
   redeclare replaceable function extends specificHeatCapacityCp
     "Return specific heat capacity cp from state"
-    // Standard definition
   algorithm
-    cp := state.cp;
-    /*  // If special definition in "C"
-  external "C" cp=  SinglePhaseMedium_specificHeatCapacityCp_C_impl(state, mediumName, libraryName, substanceName)
-    annotation(Include="#include \"medialookuptableslib.h\"", Library="MediaLookupTables", IncludeDirectory="modelica://MediaLookupTables/Resources/Include", LibraryDirectory="modelica://MediaLookupTables/Resources/Library");
-*/
+    cp := Method(
+        tablesPath_pT_cp,
+        state.p,
+        state.T);
     annotation (Inline=true);
   end specificHeatCapacityCp;
 
   redeclare replaceable function extends specificHeatCapacityCv
     "Return specific heat capacity cv from state"
-    // Standard definition
   algorithm
-    cv := state.cv;
-    /*  // If special definition in "C"
-  external "C" cv=  SinglePhaseMedium_specificHeatCapacityCv_C_impl(state, mediumName, libraryName, substanceName)
-    annotation(Include="#include \"medialookuptableslib.h\"", Library="MediaLookupTables", IncludeDirectory="modelica://MediaLookupTables/Resources/Include", LibraryDirectory="modelica://MediaLookupTables/Resources/Library");
-*/
+    cv := Method(
+        tablesPath_pT_cv,
+        state.p,
+        state.T);
     annotation (Inline=true);
   end specificHeatCapacityCv;
 
   redeclare replaceable function extends density
     "Return density from state"
-    // Standard definition
   algorithm
-    d := state.d;
-    /*  // If special definition in "C"
-  external "C" d=  SinglePhaseMedium_density_C_impl(state, mediumName, libraryName, substanceName)
-    annotation(Include="#include \"medialookuptableslib.h\"", Library="MediaLookupTables", IncludeDirectory="modelica://MediaLookupTables/Resources/Include", LibraryDirectory="modelica://MediaLookupTables/Resources/Library");
-*/
+    d := Method(
+        tablesPath_pT_d,
+        state.p,
+        state.T);
     annotation (Inline=true);
   end density;
 
   redeclare replaceable function extends density_derh_p
     "Return derivative of density wrt enthalpy at constant pressure from state"
-    // Standard definition
   algorithm
-    ddhp := state.ddhp;
-    /*  // If special definition in "C"
-  external "C" ddhp=  SinglePhaseMedium_density_derh_p_C_impl(state, mediumName, libraryName, substanceName)
-    annotation(Include="#include \"medialookuptableslib.h\"", Library="MediaLookupTables", IncludeDirectory="modelica://MediaLookupTables/Resources/Include", LibraryDirectory="modelica://MediaLookupTables/Resources/Library");
-*/
+    assert(false,"This function is not yet supported");
     annotation (Inline=true);
   end density_derh_p;
 
   redeclare replaceable function extends density_derp_h
     "Return derivative of density wrt pressure at constant enthalpy from state"
-    // Standard definition
   algorithm
-    ddph := state.ddph;
-    /*  // If special definition in "C"
-  external "C" ddph=  SinglePhaseMedium_density_derp_h_C_impl(state, mediumName, libraryName, substanceName)
-    annotation(Include="#include \"medialookuptableslib.h\"", Library="MediaLookupTables", IncludeDirectory="modelica://MediaLookupTables/Resources/Include", LibraryDirectory="modelica://MediaLookupTables/Resources/Library");
-*/
+    assert(false,"This function is not yet supported");
     annotation (Inline=true);
   end density_derp_h;
 
   redeclare replaceable function extends density_derp_T
+    "Return derivative of density wrt pressure at constant temperature from state"
   algorithm
-    ddpT := state.kappa*state.d;
+    // ddpT := state.kappa*state.d;
+    ddpT := Method_dx(
+        tablesPath_pT_d,
+        state.p,
+        state.T);
   end density_derp_T;
 
   redeclare replaceable function extends density_derT_p
+    "Return derivative of density wrt temperature at constant pressure from state"
   algorithm
-    ddTp := -state.beta*state.d;
+    // ddTp := -state.beta*state.d;
+    ddTp := Method_dx(
+        tablesPath_pT_d,
+        state.p,
+        state.T);
   end density_derT_p;
 
   redeclare replaceable function extends dynamicViscosity
     "Return dynamic viscosity from state"
-    // Standard definition
   algorithm
-    eta := state.eta;
-    /*  // If special definition in "C"
-  external "C" eta=  SinglePhaseMedium_dynamicViscosity_C_impl(state, mediumName, libraryName, substanceName)
-    annotation(Include="#include \"medialookuptableslib.h\"", Library="MediaLookupTables", IncludeDirectory="modelica://MediaLookupTables/Resources/Include", LibraryDirectory="modelica://MediaLookupTables/Resources/Library");
-*/
+    eta := Method(
+        tablesPath_pT_mu,
+        state.p,
+        state.T);
     annotation (Inline=true);
   end dynamicViscosity;
 
   redeclare replaceable function extends specificEnthalpy
     "Return specific enthalpy from state"
-    // Standard definition
   algorithm
     h := state.h;
-    /*  // If special definition in "C"
-  external "C" h=  SinglePhaseMedium_specificEnthalpy_C_impl(state, mediumName, libraryName, substanceName)
-    annotation(Include="#include \"medialookuptableslib.h\"", Library="MediaLookupTables", IncludeDirectory="modelica://MediaLookupTables/Resources/Include", LibraryDirectory="modelica://MediaLookupTables/Resources/Library");
-*/
     annotation (Inline=true);
   end specificEnthalpy;
 
@@ -926,66 +599,35 @@ package ExternalSinglePhaseMedium_new
 
   redeclare replaceable function extends isothermalCompressibility
     "Return isothermal compressibility from state"
-    // Standard definition
   algorithm
-    kappa := state.kappa;
-    /*  // If special definition in "C"
-  external "C" kappa=  SinglePhaseMedium_isothermalCompressibility_C_impl(state, mediumName, libraryName, substanceName)
-    annotation(Include="#include \"medialookuptableslib.h\"", Library="MediaLookupTables", IncludeDirectory="modelica://MediaLookupTables/Resources/Include", LibraryDirectory="modelica://MediaLookupTables/Resources/Library");
-*/
+    assert(false,"This function is not yet supported");
     annotation (Inline=true);
   end isothermalCompressibility;
 
   redeclare replaceable function extends thermalConductivity
     "Return thermal conductivity from state"
-    // Standard definition
   algorithm
-    lambda := state.lambda;
-    /*  // If special definition in "C"
-  external "C" lambda=  SinglePhaseMedium_thermalConductivity_C_impl(state, mediumName, libraryName, substanceName)
-    annotation(Include="#include \"medialookuptableslib.h\"", Library="MediaLookupTables", IncludeDirectory="modelica://MediaLookupTables/Resources/Include", LibraryDirectory="modelica://MediaLookupTables/Resources/Library");
-*/
+    lambda := Method(
+        tablesPath_pT_lambda,
+        state.p,
+        state.T);
     annotation (Inline=true);
   end thermalConductivity;
 
   redeclare replaceable function extends pressure
     "Return pressure from state"
-    // Standard definition
   algorithm
     p := state.p;
-    /*  // If special definition in "C"
-  external "C" p=  SinglePhaseMedium_pressure_C_impl(state, mediumName, libraryName, substanceName)
-    annotation(Include="#include \"medialookuptableslib.h\"", Library="MediaLookupTables", IncludeDirectory="modelica://MediaLookupTables/Resources/Include", LibraryDirectory="modelica://MediaLookupTables/Resources/Library");
-*/
     annotation (Inline=true);
   end pressure;
 
   redeclare replaceable function extends specificEntropy
     "Return specific entropy from state"
-    // Standard definition
   algorithm
-    s := state.s;
-    /*  // If special definition in "C"
-    external "C" s=  SinglePhaseMedium_specificEntropy_C_impl(state, mediumName, libraryName, substanceName)
-    annotation(Include="#include \"medialookuptableslib.h\"", Library="MediaLookupTables", IncludeDirectory="modelica://MediaLookupTables/Resources/Include", LibraryDirectory="modelica://MediaLookupTables/Resources/Library");
-*/
+    s := Method(
+        tablesPath_pT_s,
+        state.p,
+        state.T);
     annotation (Inline=true);
   end specificEntropy;
-  //   redeclare replaceable function extends isentropicEnthalpy
-  //   external "C" h_is = SinglePhaseMedium_isentropicEnthalpy_C_impl(p_downstream, refState,
-  //    mediumName, libraryName, substanceName)
-  //     annotation(Include="#include \"medialookuptableslib.h\"", Library="MediaLookupTables", IncludeDirectory="modelica://MediaLookupTables/Resources/Include", LibraryDirectory="modelica://MediaLookupTables/Resources/Library");
-  //   end isentropicEnthalpy;
-  //
-  //   redeclare replaceable function extends surfaceTension
-  //     "Returns surface tension sigma in the two phase region"
-  //     //Standard definition
-  //   algorithm
-  //     sigma := sat.sigma;
-  //     /*  //If special definition in "C"
-  //   external "C" sigma=  SinglePhaseMedium_surfaceTension_C_impl(sat, mediumName, libraryName, substanceName)
-  //     annotation(Include="#include \"medialookuptableslib.h\"", Library="MediaLookupTables", IncludeDirectory="modelica://MediaLookupTables/Resources/Include", LibraryDirectory="modelica://MediaLookupTables/Resources/Library");
-  // */
-  //     annotation(Inline = true);
-  //   end surfaceTension;
 end ExternalSinglePhaseMedium_new;

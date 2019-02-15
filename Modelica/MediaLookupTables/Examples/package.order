@@ -4,5 +4,8 @@ setState_pT
 test
 noname_spline2d_eval
 check_noname_spline2d_eval
-LookupTables_2D
 LookupTables_2D_Test
+Interpolation_2D
+interpolation
+SuperSimple_new
+ParaHydrogen_new
