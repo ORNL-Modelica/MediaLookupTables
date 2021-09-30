@@ -3,3 +3,7 @@ ExternalSinglePhaseMedium
 LookupTableMedium
 ExternalSuperSimpleMedium
 SuperSimpleMedium
+ExternalSinglePhaseMedium_new
+SuperSimpleMedium_new
+ExternalSuperSimpleMedium_new
+LookupTableMedium_new

@@ -1,11 +1,9 @@
 within MediaLookupTables.LookupTables.BaseClasses;
 package ExternalSinglePhaseMedium "Generic external single phase medium package"
-
   import MediaLookupTables.LookupTables.BaseClasses.Common.InputChoice;
 
   extends MediaLookupTables.Interfaces.Fluids.PartialSinglePhaseMedium(
       singleState=false, fluidConstants={externalFluidConstants});
-
   // mediumName is declared here instead of in the extends clause
   // to break a circular dependency in redeclaration that OpenModelica
   // cannot yet handle
@@ -20,7 +18,6 @@ package ExternalSinglePhaseMedium "Generic external single phase medium package"
       chemicalFormula="unknown",
       structureFormula="unknown",
       molarMass=getMolarMass());
-
   constant InputChoice inputChoice=InputChoice.pT
     "Default choice of input variables for property computations";
 
@@ -58,19 +55,15 @@ package ExternalSinglePhaseMedium "Generic external single phase medium package"
           StateSelect.prefer else StateSelect.default),
     d(stateSelect=if preferredMediumStates and basePropertiesInputChoice ==
           InputChoice.dT then StateSelect.prefer else StateSelect.default))
-
     import MediaLookupTables.LookupTables.BaseClasses.Common.InputChoice;
-
     parameter InputChoice basePropertiesInputChoice=inputChoice
       "Choice of input variables for property computations";
     SpecificEntropy s(stateSelect=if (basePropertiesInputChoice == InputChoice.hs
            or basePropertiesInputChoice == InputChoice.ps) then StateSelect.prefer
            else StateSelect.default) "Specific entropy";
-
   equation
     MM = externalFluidConstants.molarMass;
     R = Modelica.Constants.R/MM;
-
     // if (basePropertiesInputChoice == InputChoice.ph) then
     //   // Compute the state record (including the unique ID)
     //   state = setState_ph(p, h, phaseInput);
@@ -105,7 +98,6 @@ package ExternalSinglePhaseMedium "Generic external single phase medium package"
     //   p = pressure(state);
     //   T = temperature(state);
     // end if;
-
     if (basePropertiesInputChoice == InputChoice.pT) then
       state = setState_pT(p, T);
       d = density(state);
@@ -710,5 +702,4 @@ package ExternalSinglePhaseMedium "Generic external single phase medium package"
   // */
   //     annotation(Inline = true);
   //   end surfaceTension;
-
 end ExternalSinglePhaseMedium;

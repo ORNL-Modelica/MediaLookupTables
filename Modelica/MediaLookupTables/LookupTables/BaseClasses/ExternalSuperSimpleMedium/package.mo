@@ -1,11 +1,9 @@
 within MediaLookupTables.LookupTables.BaseClasses;
 package ExternalSuperSimpleMedium "Generic external medium package as a super simple example"
-
   import MediaLookupTables.LookupTables.BaseClasses.Common.InputChoice;
 
   extends MediaLookupTables.Interfaces.Fluids.PartialSinglePhaseMedium(
       singleState=false, fluidConstants={externalFluidConstants});
-
   // mediumName is declared here instead of in the extends clause
   // to break a circular dependency in redeclaration that OpenModelica
   // cannot yet handle
@@ -20,7 +18,6 @@ package ExternalSuperSimpleMedium "Generic external medium package as a super si
       chemicalFormula="unknown",
       structureFormula="unknown",
       molarMass=0.1);
-
   constant InputChoice inputChoice=InputChoice.pT
     "Default choice of input variables for property computations";
 
@@ -44,16 +41,12 @@ package ExternalSuperSimpleMedium "Generic external medium package as a super si
           StateSelect.prefer else StateSelect.default),
     d(stateSelect=if preferredMediumStates and basePropertiesInputChoice ==
           InputChoice.dT then StateSelect.prefer else StateSelect.default))
-
     import MediaLookupTables.LookupTables.BaseClasses.Common.InputChoice;
-
     parameter InputChoice basePropertiesInputChoice=inputChoice
       "Choice of input variables for property computations";
-
   equation
     MM = externalFluidConstants.molarMass;
     R = Modelica.Constants.R/MM;
-
     if (basePropertiesInputChoice == InputChoice.pT) then
       state = setState_pT(p, T);
       d = 1.0;
