@@ -1,7 +1,6 @@
 #ifndef NONAME_ASSERTION_MACROS
 #define NONAME_ASSERTION_MACROS
 
-#include <cassert>
 #include <cstdlib>
 #include <iostream>
 
@@ -28,6 +27,14 @@
       std::cerr << __FILE__ << ":" << __LINE__ << " " << #expression           \
                 << " did throw but exception type was not " << #exception_type \
                 << "\n";                                                       \
+      std::abort();                                                            \
+    }                                                                          \
+  }
+#define ASSERT(condition)                                                      \
+  {                                                                            \
+    if (!bool(condition)) {                                                    \
+      std::cerr << __FILE__ << ":" << __LINE__ << " assertion `" << #condition \
+                << "' failed\n";                                               \
       std::abort();                                                            \
     }                                                                          \
   }

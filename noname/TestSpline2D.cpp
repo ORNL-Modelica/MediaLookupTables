@@ -1,8 +1,15 @@
-#include <noname_Spline2D.hpp>
-#include <noname_TestAssertionMacros.hpp>
+#include <Spline2D.hpp>
+#include <TestAssertionMacros.hpp>
 
+#include <gsl/gsl_interp2d.h>
+
+#include <cstddef>
+#include <cstdlib>
 #include <iostream>
 #include <numeric>
+#include <stdexcept>
+#include <utility>
+#include <vector>
 
 using namespace noname;
 
@@ -93,6 +100,53 @@ template <typename T> void out_of_domain() {
   ASSERT_THROW(spline.eval(ok, x.front() - 1e-12), std::domain_error);
 }
 
+class Rosenbrock {
+public:
+  Rosenbrock() = default;
+  Rosenbrock(double a, double b) : _a{a}, _b{b} {}
+  double operator()(double x, double y) {
+    return (_a - x) * (_a - x) + _b * (y - x * x) * (y - x * x);
+  }
+
+private:
+  double _a = 1.;
+  double _b = 100.;
+};
+
+std::vector<double> make_grid(std::pair<double, double> const &range, int n) {
+  std::vector<double> v(n);
+  for (int i = 0; i < n; ++i) {
+    v[i] = range.first + i * (range.second - range.first) / (n - 1);
+  }
+  return v;
+}
+
+bool fp_close(double l, double r, double tol) {
+  double const abs_err = std::abs(l - r);
+  double const rel_err = l != 0. ? std::abs(l - r) / std::abs(l) : 0.;
+  return abs_err + rel_err < tol;
+}
+
+template <typename T> void eval_at_grid_points() {
+  auto const x = make_grid({-2., 2.}, 11);
+  auto const y = make_grid({-1., 3.}, 21);
+
+  std::vector<double> z(x.size() * y.size());
+  Rosenbrock func;
+  for (size_t i = 0; i < x.size(); ++i) {
+    for (size_t j = 0; j < y.size(); ++j) {
+      z[j * x.size() + i] = func(x[i], y[j]);
+    }
+  }
+  Spline2D<T> spline(x, y, z);
+  double const tolerance = 1e-12;
+  for (auto xi : x) {
+    for (auto yj : y) {
+      ASSERT(fp_close(spline.eval(xi, yj), func(xi, yj), tolerance));
+    }
+  }
+}
+
 int main() {
 
   std::cout << "out of domain\n";
@@ -110,6 +164,10 @@ int main() {
   std::cout << "sorted and unique\n";
   points_are_sorted_and_unique<Bicubic>();
   points_are_sorted_and_unique<Bilinear>();
+
+  std::cout << "eval at grid points\n";
+  eval_at_grid_points<Bicubic>();
+  eval_at_grid_points<Bilinear>();
 
   std::cout << "done!\n";
 }

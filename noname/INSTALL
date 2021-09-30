@@ -1,9 +1,0 @@
-To install the library, perform the following steps:
-- mkdir build
-- cd build
-- cmake -DCMAKE_PREFIX_INSTALL=/path/to/install ../
-- make 
-- make install
-
-The make step will download gsl 2.5, patch it, and then compile it. So you need
-to have an internet connection.
